@@ -113,26 +113,32 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack)
 	float dt = (measurement_pack.timestamp_ - previous_timestamp_) / 1000000.0;	//dt - expressed in seconds
 	previous_timestamp_ = measurement_pack.timestamp_;
 
-  //Modify the F matrix so that the time is integrated
-	ekf_.F_(0, 2) = dt;
-	ekf_.F_(1, 3) = dt;
+  //for efficiency, if there is no change in time since the last sensor measurement
+  //then the prediction will be the same as the last prediction, and therefore no need
+  //to re-evaluate the prediction.
+  if (dt > 0){
 
-  float dt_2 = dt * dt;
-	float dt_3 = dt_2 * dt;
-	float dt_4 = dt_3 * dt;
+    //Modify the F matrix so that the time is integrated
+    ekf_.F_(0, 2) = dt;
+    ekf_.F_(1, 3) = dt;
 
-  //set the acceleration noise components
-	int noise_ax = 9;
-	int noise_ay = 9;
+    float dt_2 = dt * dt;
+    float dt_3 = dt_2 * dt;
+    float dt_4 = dt_3 * dt;
 
-  //set the process covariance matrix Q
-	ekf_.Q_ = MatrixXd(4, 4);
-	ekf_.Q_ <<  dt_4/4*noise_ax, 0, dt_3/2*noise_ax, 0,
-			       0, dt_4/4*noise_ay, 0, dt_3/2*noise_ay,
-			       dt_3/2*noise_ax, 0, dt_2*noise_ax, 0,
-			       0, dt_3/2*noise_ay, 0, dt_2*noise_ay;
+    //set the acceleration noise components
+    int noise_ax = 9;
+    int noise_ay = 9;
 
-  ekf_.Predict();
+    //set the process covariance matrix Q
+    ekf_.Q_ = MatrixXd(4, 4);
+    ekf_.Q_ <<  dt_4/4*noise_ax, 0, dt_3/2*noise_ax, 0,
+              0, dt_4/4*noise_ay, 0, dt_3/2*noise_ay,
+              dt_3/2*noise_ax, 0, dt_2*noise_ax, 0,
+              0, dt_3/2*noise_ay, 0, dt_2*noise_ay;
+
+    ekf_.Predict();
+  }
 
   /*****************************************************************************
    *  Update
